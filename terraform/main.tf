@@ -42,12 +42,12 @@ module "ecs" {
     }
   }
     services = {
-    kh-svc = { #task def and service name -> #Change
+    kh-service = { #task def and service name -> #Change
       cpu    = 512
       memory = 1024
       # Container definition(s)
       container_definitions = {
-        ecs-sample = { #container name
+        kh-service = { #container name
           essential = true
           image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${local.prefix}-ecr:latest"
           port_mappings = [
