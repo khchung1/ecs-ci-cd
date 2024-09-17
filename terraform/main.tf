@@ -42,7 +42,7 @@ module "ecs" {
     }
   }
     services = {
-    kokhui-service = { #task def and service name -> #Change
+    kh-service = { #task def and service name -> #Change
       cpu    = 512
       memory = 1024
       # Container definition(s)
