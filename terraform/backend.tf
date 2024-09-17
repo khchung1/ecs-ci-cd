@@ -1,7 +1,7 @@
-terraform {
-  #backend "s3" {
-  #  bucket = "sctp-ce2-tfstate-bkt"
-  #  key    = "chathra-ecs-demo.tfstate"   #Change the value  of this to yourname-docker-ec2.tfstate for  example
-  #  region = "ap-southeast-1"
-  #}
-}
+ terraform {
+   backend "s3" {
+    bucket = "sctp-ce6-tfstate"
+    key    = "ecs-cicd-kokhui.tfstate"  #Change this to your tfstate file
+    region = "ap-southeast-1"
+   }
+ }

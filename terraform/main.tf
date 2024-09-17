@@ -1,21 +1,38 @@
-data "aws_vpc" "selected" {
-  filter {
-    name   = "tag:Name"
-    values = ["sctp-sandbox-vpc-vpc"]
-  }
+locals {
+  prefix = "kh-dev"  #Change
 }
+data "aws_caller_identity" "current" {}
+
+
+data "aws_region" "current" {}
+
+
+data "aws_vpc" "default" {
+  default = true
+}
+
 
 data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpc.selected.id]
+    values = [data.aws_vpc.default.id]
   }
 }
 
-module "ecs" {
-  source = "terraform-aws-modules/ecs/aws"
 
-  cluster_name = "ecs-tf"   #Change
+resource "aws_ecr_repository" "ecr" {
+  name         = "${local.prefix}-ecr"
+  force_delete = true
+}
+
+
+module "ecs" {
+  source  = "terraform-aws-modules/ecs/aws"
+  version = "~> 5.9.0"
+
+
+  cluster_name = "${local.prefix}-ecs"
+
 
   fargate_capacity_providers = {
     FARGATE = {
@@ -24,58 +41,40 @@ module "ecs" {
       }
     }
   }
-
-  services = {
-    ecsdemo = { #task def and service name -> #Change
+    services = {
+    kokhui-service = { #task def and service name -> #Change
       cpu    = 512
       memory = 1024
-
       # Container definition(s)
       container_definitions = {
-
-        ecs-sample = { #container name
-          essential = true 
-          image     = "public.ecr.aws/docker/library/httpd:latest"
+        khchung-sample = { #container name
+          essential = true
+          image     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${local.prefix}-ecr:latest"
           port_mappings = [
             {
-              name          = "ecs-sample"  #container name
               containerPort = 8080
               protocol      = "tcp"
             }
           ]
-          readonly_root_filesystem = false
-
         }
       }
-      assign_public_ip = true
+      assign_public_ip                   = true
       deployment_minimum_healthy_percent = 100
-      subnet_ids = flatten(data.aws_subnets.public.ids)
-      security_group_ids  = [aws_security_group.allow_sg.id]
+      subnet_ids                         = flatten(data.aws_subnets.public.ids)
+      security_group_ids                 = [module.ecs_sg.security_group_id]
     }
   }
 }
 
-resource "aws_security_group" "allow_sg" {
-  name        = "allow_tls"
-  description = "Allow traffic"
-  vpc_id      = data.aws_vpc.selected.id
+module "ecs_sg" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 5.1.0"
 
-  ingress {
-    description = "Allow all"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [data.aws_vpc.selected.cidr_block]
-  }
+  name        = "${local.prefix}-ecs-sg"
+  description = "Security group for ecs"
+  vpc_id      = data.aws_vpc.default.id
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "allow_sg"
-  }
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  ingress_rules       = ["http-8080-tcp"]
+  egress_rules        = ["all-all"]
 }
